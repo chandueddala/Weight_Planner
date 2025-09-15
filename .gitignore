@@ -1,0 +1,9 @@
+myenv/
+.venv/
+__pycache__/
+*.pyc
+.env
+.streamlit/
+data/
+Calories/
+
