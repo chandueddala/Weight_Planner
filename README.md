@@ -20,7 +20,6 @@ Enter your profile and goal → get **daily macros**, a **weekly weight forecast
 
 ## 📦 Repo layout
 
-.
 ├─ Stream_lit_Chat.py # Main Streamlit app (UI + navigation)
 ├─ main.py # (Optional) alt entry point
 ├─ weight_planner.py # Calorie math, targets, forecasting
