@@ -47,7 +47,7 @@ with st.sidebar.form("user_inputs"):
 def load_recipes_direct(path):
     return pd.read_csv(path)
 
-csv_path = "Calories\Recipes.csv"
+csv_path = "Calories/Recipes.csv"
 df = load_recipes_direct(csv_path)
 
 # --- Main Planner Page ---
