@@ -3,7 +3,6 @@ import textwrap
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.chat_models import ChatOpenAI
-from langchain.chains import load_qa_with_sources_chain
 from dotenv import load_dotenv
 
 # Load .env file
@@ -32,7 +31,6 @@ class GPTCustomPromptPlanner:
 
     def _load_model(self):
         self.llm = ChatOpenAI(model_name=self.model_name, temperature=self.temperature)
-        self.chain = load_qa_with_sources_chain(self.llm, chain_type="stuff")
 
     def enrich_prompt(self, user_prompt, age, gender, height_cm, present_weight, target_weight, calories):
         goal = "gain" if target_weight > present_weight else "lose"
@@ -88,6 +86,13 @@ User wants to {goal} weight. Answer the following question using the provided co
             return "No relevant chunks found.", "Sorry, no context matched your question well enough.", []
 
         prompt = self.enrich_prompt(user_prompt, age, gender, height_cm, present_weight, target_weight, calories)
-        response = self.chain.run({"input_documents": docs, "question": prompt})
 
-        return prompt.strip(), response.strip(), doc_summaries
+        # Combine context and prompt
+        context = "\n\n".join([doc.page_content for doc in docs])
+        full_prompt = f"Context:\n{context}\n\nQuestion:\n{prompt}"
+
+        # Call GPT with retrieved context
+        response = self.llm.invoke(full_prompt)
+        response_text = response.content if hasattr(response, 'content') else str(response)
+
+        return prompt.strip(), response_text.strip(), doc_summaries
