@@ -3,7 +3,7 @@ import textwrap
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_community.chat_models import ChatOpenAI
-from langchain.chains.qa_with_sources import load_qa_with_sources_chain
+from langchain.chains import load_qa_with_sources_chain
 from dotenv import load_dotenv
 
 # Load .env file
