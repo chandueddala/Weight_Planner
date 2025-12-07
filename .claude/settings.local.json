@@ -6,7 +6,8 @@
       "Bash(git add:*)",
       "Bash(pip show:*)",
       "Bash(python:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(pip uninstall:*)"
     ],
     "deny": [],
     "ask": []
