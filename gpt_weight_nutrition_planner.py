@@ -76,4 +76,8 @@ The user wants to {goal} weight.
         response = self.llm.invoke(full_prompt)
         response_text = response.content if hasattr(response, 'content') else str(response)
 
-        return prompt.strip(), response_text.strip(), doc_summaries
+        # Return 4 values for consistency with GPTCustomPromptPlanner
+        # (This class doesn't use DynamoDB yet, so metadata is empty)
+        metadata = {"chunks_retrieved": len(docs)}
+        
+        return prompt.strip(), response_text.strip(), doc_summaries, metadata

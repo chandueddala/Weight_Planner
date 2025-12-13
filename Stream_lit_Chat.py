@@ -115,7 +115,7 @@ if st.session_state.page == "Main Planner":
             if not st.session_state.get("gpt_plan"):
                 try:
                     gpt_engine = GPTWeightNutritionPlanner()
-                    gpt_prompt, gpt_response, gpt_docs = gpt_engine.generate(
+                    gpt_prompt, gpt_response, gpt_docs, _ = gpt_engine.generate(
                         age=age,
                         gender=gender,
                         height_cm=height_cm,
@@ -169,7 +169,7 @@ elif st.session_state.page == "Custom Chat":
     if user_custom_prompt:
         try:
             gpt_custom = GPTCustomPromptPlanner()
-            prompt_out, response_out, docs_out = gpt_custom.generate(
+            prompt_out, response_out, docs_out, metadata = gpt_custom.generate(
                 user_prompt=user_custom_prompt,
                 age=age,
                 gender=gender,
@@ -182,7 +182,8 @@ elif st.session_state.page == "Custom Chat":
                 "user": user_custom_prompt,
                 "response": response_out,
                 "context": docs_out,
-                "prompt": prompt_out 
+                "prompt": prompt_out,
+                "metadata": metadata  # Include metadata (credits, latency, etc.)
             })
 
         except Exception as e:
@@ -193,6 +194,16 @@ elif st.session_state.page == "Custom Chat":
             st.markdown(item["user"])
         with st.chat_message("assistant", avatar=bot_avatar_path):
             st.markdown(item["response"])
+            
+            # Display metadata if available
+            if "metadata" in item and item["metadata"]:
+                meta = item["metadata"]
+                st.caption(
+                    f"💳 Credits Remaining: **{meta.get('credits_remaining', 'N/A')}** | "
+                    f"⏱️ Response Time: **{meta.get('latency_ms', 'N/A')} ms** | "
+                    f"📄 Chunks: **{meta.get('chunks_retrieved', 'N/A')}**"
+                )
+            
             with st.expander("📄Prompt Sent"):
                 st.code(item["prompt"], language='text')
             with st.expander("📄 Context Source"):
