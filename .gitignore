@@ -5,4 +5,7 @@ __pycache__/
 .env
 .streamlit/
 data/
-
+.claude/
+.antigravity/
+.DS_Store
+*.log
