@@ -1,11 +1,13 @@
 """
 User Management with Atomic Credit Operations
 Handles user creation, retrieval, and credit management with DynamoDB conditional updates.
+Extended with email/username lookup and profile management for authentication.
 """
 import json
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Optional
 from botocore.exceptions import ClientError
 from .aws_session import get_ddb_tables
 
@@ -24,12 +26,13 @@ def get_or_create_user(user_id: str, email: str = None, starting_credits: int = 
     Get existing user or create new user with starting credits.
     
     Args:
-        user_id: Unique user identifier (will be Cognito sub in production)
+        user_id: Unique user identifier (will be Cognito sub or generated UUID)
         email: User email address
         starting_credits: Initial credit allocation for new users
     
     Returns:
-        User item dict with fields: user_id, email, credits_remaining, plan, created_at, last_login
+        User item dict with fields: user_id, email, credits_remaining, plan, created_at, last_login,
+        full_name, username, email_verified, auth_provider, onboarding_completed
     """
     users_table, _, _ = get_ddb_tables()
     
@@ -165,3 +168,136 @@ def get_user_credits(user_id: str) -> int:
             "error": str(e)
         }))
         return 0
+
+
+def get_user_by_email(email: str) -> Optional[dict]:
+    """
+    Look up user by email address.
+    Note: Requires a Global Secondary Index (GSI) on email field for efficient lookup.
+    
+    Args:
+        email: User's email address
+        
+    Returns:
+        User item dict or None if not found
+    """
+    users_table, _, _ = get_ddb_tables()
+    
+    try:
+        # First, try using GSI if available
+        # If GSI is not configured, fall back to scan (inefficient, but works for development)
+        try:
+            response = users_table.query(
+                IndexName='email-index',
+                KeyConditionExpression='email = :email',
+                ExpressionAttributeValues={':email': email}
+            )
+            
+            if response.get('Items'):
+                return response['Items'][0]
+        except ClientError as gsi_error:
+            # GSI might not exist, fall back to scan
+            logger.warning(f"GSI lookup failed, using scan (inefficient): {gsi_error}")
+            response = users_table.scan(
+                FilterExpression='email = :email',
+                ExpressionAttributeValues={':email': email}
+            )
+            
+            if response.get('Items'):
+                return response['Items'][0]
+        
+        return None
+        
+    except ClientError as e:
+        logger.error(f"Error looking up user by email {email}: {str(e)}")
+        return None
+
+
+def check_username_exists(username: str) -> bool:
+    """
+    Check if a username already exists.
+    Note: Requires a Global Secondary Index (GSI) on username field for efficient lookup.
+    
+    Args:
+        username: Username to check
+        
+    Returns:
+        True if username exists, False otherwise
+    """
+    users_table, _, _ = get_ddb_tables()
+    
+    try:
+        # Try using GSI if available, otherwise scan
+        try:
+            response = users_table.query(
+                IndexName='username-index',
+                KeyConditionExpression='username = :username',
+                ExpressionAttributeValues={':username': username}
+            )
+            
+            return len(response.get('Items', [])) > 0
+        except ClientError as gsi_error:
+            # GSI might not exist, fall back to scan
+            logger.warning(f"GSI lookup failed, using scan: {gsi_error}")
+            response = users_table.scan(
+                FilterExpression='username = :username',
+                ExpressionAttributeValues={':username': username}
+            )
+            
+            return len(response.get('Items', [])) > 0
+        
+    except ClientError as e:
+        logger.error(f"Error checking username {username}: {str(e)}")
+        return False
+
+
+def update_user_profile(user_id: str, **kwargs) -> bool:
+    """
+    Update user profile fields.
+    
+    Args:
+        user_id: User identifier
+        **kwargs: Fields to update (full_name, username, email_verified, etc.)
+        
+    Returns:
+        True if update successful
+    """
+    users_table, _, _ = get_ddb_tables()
+    
+    if not kwargs:
+        logger.warning("No fields provided to update")
+        return False
+    
+    try:
+        # Build update expression dynamically
+        update_expr_parts = []
+        expr_attr_values = {}
+        
+        for key, value in kwargs.items():
+            update_expr_parts.append(f"{key} = :{key}")
+            expr_attr_values[f":{key}"] = value
+        
+        update_expression = "SET " + ", ".join(update_expr_parts)
+        
+        response = users_table.update_item(
+            Key={"user_id": user_id},
+            UpdateExpression=update_expression,
+            ExpressionAttributeValues=expr_attr_values,
+            ReturnValues="UPDATED_NEW"
+        )
+        
+        logger.info(json.dumps({
+            "action": "update_user_profile",
+            "user_id": user_id,
+            "fields_updated": list(kwargs.keys())
+        }))
+        
+        return True
+        
+    except ClientError as e:
+        logger.error(json.dumps({
+            "action": "update_user_profile_error",
+            "user_id": user_id,
+            "error": str(e)
+        }))
+        return False

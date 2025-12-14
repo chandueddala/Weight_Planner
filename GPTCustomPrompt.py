@@ -76,16 +76,34 @@ User wants to {goal} weight. Answer the following question using the provided co
 - Caloric Target: {calories} kcal/day
 """
         
-        # Add conversation history if available
+        # Add conversation history if available (group into turns)
         if conversation_history and len(conversation_history) > 0:
             prompt += "\n**Conversation History:**\n"
-            for i, turn in enumerate(conversation_history[-6:], 1):  # Show last 3 exchanges (6 messages)
-                role = turn.get("role", "unknown")
-                text = turn.get("text", "")
-                if role == "user":
-                    prompt += f"{i}. User: {text}\n"
-                else:
-                    prompt += f"{i}. Assistant: {text}\n"
+
+            # Group messages into conversation turns (pairs of user + assistant)
+            history_pairs = []
+            last_6_messages = conversation_history[-6:]  # Last 3 exchanges (6 messages)
+
+            for i in range(0, len(last_6_messages), 2):
+                if i + 1 < len(last_6_messages):
+                    user_msg = last_6_messages[i]
+                    asst_msg = last_6_messages[i + 1]
+
+                    if user_msg.get("role") == "user" and asst_msg.get("role") == "assistant":
+                        history_pairs.append((user_msg.get("text", ""), asst_msg.get("text", "")))
+                elif i < len(last_6_messages):
+                    # Handle odd number of messages (last user message without response)
+                    user_msg = last_6_messages[i]
+                    if user_msg.get("role") == "user":
+                        history_pairs.append((user_msg.get("text", ""), None))
+
+            # Format as conversation turns
+            for turn_num, (user_text, asst_text) in enumerate(history_pairs, 1):
+                prompt += f"\n**Turn {turn_num}:**\n"
+                prompt += f"- User: {user_text}\n"
+                if asst_text:
+                    prompt += f"- Assistant: {asst_text}\n"
+
             prompt += "\n"
         
         prompt += f"""
