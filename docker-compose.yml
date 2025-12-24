@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  weight-planner:
+    build: .
+    image: weight-planner:latest
+    container_name: weight-planner
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./Calories:/app/Calories
+      - ./vector:/app/vector
+      - ./images:/app/images
+      # Persist DynamoDB fake locally if we were using local DynamoDB container, 
+      # but here we connect to AWS.
+      # For authentication persistence if using local file based (not applicable here as we use DynamoDB)
+    environment:
+      - AWS_PROFILE=${AWS_PROFILE:-default}
+      - AWS_REGION=${AWS_REGION:-us-east-2}
+    # Mount AWS credentials for local testing (optional, be careful with secrets)
+    # volumes:
+    #   - ~/.aws:/root/.aws:ro
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G

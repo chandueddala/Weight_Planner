@@ -18,7 +18,7 @@ def get_boto3_session() -> boto3.Session:
     Returns:
         boto3.Session configured with profile and region
     """
-    profile = os.getenv("AWS_PROFILE", "default")
+    profile = os.getenv("AWS_PROFILE")  # Default to None for Lambda/Container support
     region = os.getenv("AWS_REGION", "us-east-2")
     
     return boto3.Session(profile_name=profile, region_name=region)
